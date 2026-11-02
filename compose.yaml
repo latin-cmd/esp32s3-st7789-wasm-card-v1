@@ -1,0 +1,24 @@
+name: esp32-wasm-card
+
+services:
+  idf:
+    image: espressif/idf:v5.3.2
+    working_dir: /project
+    environment:
+      IDF_CCACHE_ENABLE: "1"
+      IDF_GIT_SAFE_DIR: /project
+      CCACHE_DIR: /root/.cache/ccache
+    volumes:
+      - type: bind
+        source: .
+        target: /project
+      - idf-components:/project/managed_components
+      - idf-ccache:/root/.cache/ccache
+    stdin_open: true
+    tty: true
+    init: true
+    command: ["sleep", "infinity"]
+
+volumes:
+  idf-components:
+  idf-ccache:

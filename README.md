@@ -16,12 +16,44 @@ ESP32-S3 电子名片插件系统第一版。
 
 使用方法、恢复方式和插件接口见 `README-V1.md` 与 `plugins/README.md`。
 
-## 构建
+## 构建（Docker / ESP-IDF 5.3.2）
+
+在 Windows 上使用 VS Code 编辑源码，使用官方 `espressif/idf:v5.3.2`
+镜像编译。先启动 Docker Desktop，确认 Linux 容器引擎正在运行。
+
+在项目目录的 PowerShell 中运行：
 
 ```powershell
-. 'D:\TheWork\espressif\esp-idf-v5.3.2\export.ps1'
-idf.py -B build-v5.3.2 build
+# 首次运行会自动下载镜像；之后复用镜像和编译缓存
+.\tools\idf.ps1 build
+
+# 查看固件空间占用
+.\tools\idf.ps1 size
+
+# 打开固件配置界面（需要交互终端）
+.\tools\idf.ps1 menuconfig
+
+# 进入已激活 ESP-IDF 环境的容器终端
+.\tools\idf.ps1 shell
 ```
+
+也可以直接运行：
+
+```powershell
+docker compose run --rm -T idf idf.py -B build-docker build
+```
+
+- `compose.yaml`：固定 ESP-IDF 5.3.2 和编译缓存配置。
+- `tools/idf.ps1`：构建、配置和容器终端入口。
+- `build-docker/`：当前源码的 Linux 编译结果，保存在本地且不提交 Git。
+- 依赖组件与 ccache 使用 Docker 命名卷，和本地旧依赖目录隔离。
+- 修改源码后重新执行 `build`，会进行增量编译。
+- 容器中的项目目录是 `/project`。在容器终端中也使用
+  `idf.py -B build-docker build`，避免复用旧 Windows 构建目录。
+- 烧录和串口调试在 Windows 上进行；编译命令不会自动烧录开发板。
+- 电脑端图片/插件管理页面仍可通过 `host/serve.ps1` 启动。
+
+此环境保留项目当前的 IDF 版本；升级到 6.1 应在独立分支中迁移并验证。
 
 ## 目录
 

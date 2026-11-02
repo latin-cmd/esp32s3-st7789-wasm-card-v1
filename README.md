@@ -2,6 +2,9 @@
 
 ESP32-S3 电子名片插件系统第一版。
 
+`lineless` 分支增加无线版：设备热点配网、租户认领、MQTT 分配及 WebSocket 图片上传。
+启动、配网和联调见 [无线版说明](wireless/README.md)。
+
 ## 已实现
 
 - ESP32-S3 + ST7789，240 x 280，RGB565，LVGL 8.4

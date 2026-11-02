@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lineless · 无线电子名片</title>
+  <link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/">lineless<span>无线电子名片</span></a><div class="header-right"><span id="workspace">让内容，自由抵达。</span><button id="logout" class="quiet" hidden>退出登录</button></div></header>
+  <section id="auth" class="auth-layout">
+    <div class="intro"><div class="eyebrow">A LITTLE SCREEN. A NEW CONNECTION.</div><h1>你的名片，<br>无线更新。</h1><p>连接热点，认领设备，把下一张名片送到掌心的小屏幕。</p><div class="steps"><span>01 / 设备配网</span><span>02 / 认领到工作空间</span><span>03 / 无线上传</span></div></div>
+    <form id="authForm" class="panel auth-panel"><div class="tabs"><button type="button" class="tab active" data-mode="login">登录</button><button type="button" class="tab" data-mode="signup">创建工作空间</button></div><h2 id="authTitle">欢迎回来</h2><p class="muted">你的设备和图片，保存在自己的工作空间。</p><label id="tenantField" hidden>工作空间名称<input id="tenantName" maxlength="64" placeholder="例如：我的电子名片"></label><label>邮箱<input id="email" type="email" autocomplete="username" required placeholder="you@example.com"></label><label>密码<input id="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" required placeholder="至少 10 位"></label><button type="submit" class="primary wide" id="authSubmit">进入工作空间 →</button><p class="form-note">首次使用，请先创建一个工作空间。</p></form>
+  </section>
+  <main id="dashboard" hidden>
+    <section class="page-heading"><div><div class="eyebrow">YOUR CONNECTED CARDS</div><h1>名片工作台</h1><p class="muted">设备在线时直接送达；离线时保留图片，重连后继续发送。</p></div><span id="liveState" class="badge">正在连接</span></section>
+    <div class="dashboard-grid">
+      <aside class="panel devices-panel"><div class="section-title"><h2>我的设备</h2><span id="deviceCount" class="count">0</span></div><div id="devices" class="device-list"></div><div id="emptyDevices" class="empty"><span class="empty-icon">＋</span><b>第一张名片，从这里开始</b><p>设备配网成功后，在配网页查看设备号与一次性认领码。</p></div><form id="claimForm"><h3>认领设备</h3><label>设备号<input id="deviceId" required autocomplete="off" placeholder="card-a1b2c3d4e5f6"></label><label>一次性认领码<input id="claimCode" required autocomplete="off" placeholder="设备配网页中显示的 12 位码"></label><button class="secondary wide" type="submit">添加到我的工作空间</button></form><details><summary>设备如何连接这里？</summary><p>先连接设备发出的 Card 热点，访问 192.168.4.1，填写路由器 Wi-Fi 和下面的管理服务地址。</p><code id="serverAddress">读取中</code><p>设备与电脑需连接同一网络。电脑的 localhost 地址只供本机浏览器使用。</p></details></aside>
+      <section class="panel studio-panel"><div class="section-title"><div><h2>设计下一张名片</h2><p id="selectedName" class="muted">先在左侧选择一台设备</p></div><span class="resolution">240 × 280</span></div><div class="studio-grid"><div class="preview-stage"><div class="screen"><canvas id="preview" width="240" height="280"></canvas></div><div class="preview-caption">设备屏幕预览</div></div><div class="controls"><label class="file-drop" for="imageFile"><span>↥</span><b>选择一张图片</b><small>图片会在浏览器内裁剪为屏幕尺寸</small><input id="imageFile" type="file" accept="image/*"></label><label>缩放 <output id="zoomValue">1.0×</output><input id="zoom" type="range" min="1" max="3" step="0.05" value="1"></label><label>水平位置<input id="offsetX" type="range" min="-120" max="120" value="0"></label><label>垂直位置<input id="offsetY" type="range" min="-140" max="140" value="0"></label><div class="two-buttons"><button id="rotate" class="quiet">旋转 90°</button><button id="resetCrop" class="quiet">重置裁剪</button></div><button id="upload" class="primary wide" disabled>无线上传到设备 →</button><progress id="progress" max="100" value="0" hidden></progress><p class="form-note">图片由 WebSocket 传输，设备校验、保存并显示后才标记为“已显示”。</p></div></div><div class="delivery"><span class="status-dot"></span><div><b id="deliveryTitle">等待选择设备</b><p id="deliveryDetail">图片会保存在设备中，断电重启也能恢复。</p></div></div></section>
+    </div>
+  </main>
+  <div id="toast" role="status" hidden></div><footer>Lineless / ESP32-S3 · 本地开发环境，请仅在可信局域网使用。</footer>
+</body></html>

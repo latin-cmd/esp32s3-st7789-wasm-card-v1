@@ -205,6 +205,11 @@ static void serial_task(void *argument)
             continue;
         }
 
+        if (!card_storage_content_lock(5000)) {
+            drain_payload((size_t)payload_length);
+            respond((uint32_t)request_id, false, "Device busy applying wireless content");
+            continue;
+        }
         if (strcmp(command, "STATUS") == 0 && payload_length == 0) {
             respond_status((uint32_t)request_id);
         } else if (strcmp(command, "PUT_IMAGE") == 0 &&
@@ -270,6 +275,7 @@ static void serial_task(void *argument)
             drain_payload((size_t)payload_length);
             respond((uint32_t)request_id, false, "Invalid command or payload size");
         }
+        card_storage_content_unlock();
     }
 }
 

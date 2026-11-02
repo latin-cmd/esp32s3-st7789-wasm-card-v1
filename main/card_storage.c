@@ -5,12 +5,27 @@
 
 #include "esp_littlefs.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "card_storage";
 static bool s_mounted;
+static SemaphoreHandle_t s_content_lock;
+
+bool card_storage_content_lock(uint32_t timeout_ms)
+{
+    return s_content_lock && xSemaphoreTake(s_content_lock, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+void card_storage_content_unlock(void)
+{
+    if (s_content_lock) xSemaphoreGive(s_content_lock);
+}
 
 esp_err_t card_storage_init(void)
 {
+    if (!s_content_lock) s_content_lock = xSemaphoreCreateMutex();
+    if (!s_content_lock) return ESP_ERR_NO_MEM;
     const esp_vfs_littlefs_conf_t conf = {
         .base_path = CARD_STORAGE_BASE_PATH,
         .partition_label = "storage",
@@ -39,6 +54,7 @@ esp_err_t card_storage_init(void)
     /* Leftovers from an upload interrupted by a reset are never valid. */
     remove(CARD_IMAGE_TEMP_PATH);
     remove(CARD_PLUGIN_TEMP_PATH);
+    remove(CARD_STORAGE_BASE_PATH "/wireless.rgb.tmp");
     return ESP_OK;
 }
 

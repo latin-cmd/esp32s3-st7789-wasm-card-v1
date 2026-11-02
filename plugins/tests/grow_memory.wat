@@ -1,0 +1,1 @@
+(module (import "env" "host_present" (func $present (result i32))) (memory (export "memory") 1) (func (export "plugin_render") (if (i32.ne (memory.grow (i32.const 32)) (i32.const -1)) (then unreachable)) call $present drop))

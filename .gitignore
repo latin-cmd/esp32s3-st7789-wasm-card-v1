@@ -1,0 +1,12 @@
+build/
+build-*/
+managed_components/
+sdkconfig.old
+*.bin
+*.elf
+*.map
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example

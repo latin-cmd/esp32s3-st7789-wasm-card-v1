@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ESP32 Card Studio</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07101f;--panel:#111d32;--line:#263853;--ink:#eff6ff;--muted:#91a4bd;--teal:#2dd4bf;--amber:#f5b544;--bad:#fb7185}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 0,#153b52 0,transparent 35%),linear-gradient(145deg,#060b15,#0c1729);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+    header{max-width:1080px;margin:auto;padding:28px 22px 12px;display:flex;justify-content:space-between;gap:20px;align-items:flex-end}h1{font-size:clamp(25px,5vw,42px);line-height:1;margin:0}.eyebrow{color:var(--teal);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}.sub{color:var(--muted);margin:10px 0 0}.badge{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#091526;color:var(--muted);white-space:nowrap}.badge.online{border-color:#1d766e;color:var(--teal)}
+    main{max-width:1080px;margin:auto;padding:18px 22px 50px;display:grid;grid-template-columns:minmax(270px,360px) 1fr;gap:18px}.panel{background:linear-gradient(160deg,#14223a,#0d182a);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 20px 55px #0007}.preview{display:grid;place-items:center;min-height:430px}.screen{width:240px;height:280px;border-radius:10px;overflow:hidden;background:#000;box-shadow:0 0 0 8px #03070d,0 0 0 10px #263348,0 28px 45px #000a}.screen canvas{display:block;width:240px;height:280px}
+    h2{margin:0 0 14px;font-size:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:6px;margin:0 0 13px}.field span{color:var(--muted);font-size:13px}input[type=file],select{width:100%;border:1px solid var(--line);border-radius:11px;background:#091526;color:var(--ink);padding:10px}input[type=range]{width:100%;accent-color:var(--teal)}button{appearance:none;border:0;border-radius:12px;padding:11px 14px;background:var(--teal);color:#07101f;font-weight:750;cursor:pointer}button.secondary{background:#1b2a43;color:var(--ink);border:1px solid var(--line)}button.amber{background:var(--amber)}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{flex:1;min-width:130px}.note{border-left:3px solid var(--teal);padding:9px 11px;background:#091526;border-radius:0 10px 10px 0;color:var(--muted);font-size:13px;margin-top:14px}.status{margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:12px;color:var(--muted);min-height:46px}.status.bad{border-color:#7f2940;color:#fecdd3}.kv{display:grid;grid-template-columns:100px 1fr;gap:6px 12px;font-size:13px;margin-top:16px}.kv b{color:var(--muted);font-weight:500}.kv span{overflow-wrap:anywhere}.tabs{display:flex;gap:8px;margin-bottom:16px}.tab{background:#0a1628;color:var(--muted);padding:8px 12px}.tab.active{background:#1b304a;color:var(--teal)}section[data-tab]{display:none}section[data-tab].active{display:block}code{color:#8ee9db}@media(max-width:760px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.preview{min-height:350px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div><div class="eyebrow">USB plugin manager</div><h1>ESP32 Card Studio</h1><p class="sub">电脑本地页面通过 USB 串口管理 240×280 名片和 WASM 插件。</p></div>
+    <div class="actions"><button id="connect">连接 ESP32</button><div id="connection" class="badge">尚未连接</div></div>
+  </header>
+  <main>
+    <div class="panel preview"><div class="screen"><canvas id="canvas" width="240" height="280"></canvas></div></div>
+    <div class="panel">
+      <div class="tabs"><button class="tab active" data-target="image">图片</button><button class="tab" data-target="plugin">WASM 插件</button><button class="tab" data-target="device">设备</button></div>
+      <section data-tab="image" class="active">
+        <h2>上传屏幕图片</h2>
+        <label class="field"><span>选择 JPG、PNG 或 WebP</span><input id="imageFile" type="file" accept="image/*"></label>
+        <div class="grid">
+          <label class="field"><span>缩放 <output id="zoomValue">1.00×</output></span><input id="zoom" type="range" min="1" max="3" value="1" step="0.01"></label>
+          <label class="field"><span>旋转</span><select id="rotation"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+          <label class="field"><span>水平位置</span><input id="offsetX" type="range" min="-120" max="120" value="0"></label>
+          <label class="field"><span>垂直位置</span><input id="offsetY" type="range" min="-140" max="140" value="0"></label>
+        </div>
+        <div class="actions"><button id="uploadImage" disabled>转换并上传</button><button id="resetCrop" class="secondary">重置裁剪</button></div>
+        <div class="note">图片在本机浏览器转换为 RGB565，设备接收固定的 134,400 字节，因此不需要在 ESP32 上解码大图。</div>
+      </section>
+      <section data-tab="plugin">
+        <h2>加载显示插件</h2>
+        <label class="field"><span>选择不超过 128 KB 的 WebAssembly 模块</span><input id="pluginFile" type="file" accept=".wasm,application/wasm"></label>
+        <div class="actions"><button id="uploadPlugin" class="amber" disabled>上传并激活插件</button><button id="renderPlugin" class="secondary">重新渲染</button></div>
+        <div class="note">插件必须导出 <code>plugin_render()</code>，可选导出 <code>plugin_init()</code>；允许调用 <code>host_clear</code>、<code>host_fill_rect</code>、<code>host_blit_image</code> 和 <code>host_present</code>。</div>
+      </section>
+      <section data-tab="device">
+        <h2>设备状态</h2>
+        <div class="kv"><b>连接方式</b><span>Web Serial / USB</span><b>协议</b><span>CARD/1 + CRC32</span><b>图片</b><span id="imageState">—</span><b>插件</b><span id="pluginState">—</span><b>内部内存</b><span id="internalFree">—</span><b>PSRAM</b><span id="psramFree">—</span></div>
+        <div class="actions" style="margin-top:16px"><button id="resetContent" class="secondary">恢复内置名片</button></div>
+      </section>
+      <div id="message" class="status">等待操作。</div>
+    </div>
+  </main>
+  <script>
+    const W=240,H=280,canvas=document.querySelector('#canvas'),ctx=canvas.getContext('2d',{alpha:false});
+    const $=s=>document.querySelector(s),controls=['#zoom','#rotation','#offsetX','#offsetY'];
+    let source=null,port=null,reader=null,writer=null,nextId=1,rxText='',pending=new Map(),chain=Promise.resolve();
+    function message(text,bad=false){const el=$('#message');el.textContent=text;el.classList.toggle('bad',bad)}
+    function setConnected(value){$('#connection').textContent=value?'ESP32 已连接':'尚未连接';$('#connection').classList.toggle('online',value);$('#connect').textContent=value?'断开设备':'连接 ESP32'}
+    function placeholder(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1120');g.addColorStop(1,'#16223b');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#2dd4bf';ctx.beginPath();ctx.arc(120,75,31,0,Math.PI*2);ctx.fill();ctx.fillStyle='#07101f';ctx.font='bold 24px system-ui';ctx.textAlign='center';ctx.fillText('USB',120,83);ctx.fillStyle='#f1f5f9';ctx.font='bold 20px system-ui';ctx.fillText('Choose an image',120,145);ctx.fillStyle='#91a4bd';ctx.font='13px system-ui';ctx.fillText('240 × 280 · RGB565',120,171)}
+    function redraw(){if(!source){placeholder();return}const deg=Number($('#rotation').value),swap=deg%180!==0,rw=swap?source.height:source.width,rh=swap?source.width:source.height,scale=Math.max(W/rw,H/rh)*Number($('#zoom').value);ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.translate(W/2+Number($('#offsetX').value),H/2+Number($('#offsetY').value));ctx.rotate(deg*Math.PI/180);ctx.drawImage(source,-source.width*scale/2,-source.height*scale/2,source.width*scale,source.height*scale);ctx.restore();$('#zoomValue').value=Number($('#zoom').value).toFixed(2)+'×'}
+    function crc32(bytes){let crc=0xffffffff;for(const value of bytes){crc^=value;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}return(crc^0xffffffff)>>>0}
+    // LVGL is built with LV_COLOR_16_SWAP, so true-color image data must be
+    // stored MSB first (RGB565 big-endian) before it is copied to the panel.
+    function rgb565(){const rgba=ctx.getImageData(0,0,W,H).data,buf=new ArrayBuffer(W*H*2),view=new DataView(buf);for(let p=0,i=0;p<W*H;p++,i+=4){const v=((rgba[i]>>3)<<11)|((rgba[i+1]>>2)<<5)|(rgba[i+2]>>3);view.setUint16(p*2,v,false)}return new Uint8Array(buf)}
+    async function readLoop(){const decoder=new TextDecoder();try{while(port&&port.readable){const result=await reader.read();if(result.done)break;rxText+=decoder.decode(result.value,{stream:true});const lines=rxText.split('\n');rxText=lines.pop();for(const raw of lines){const line=raw.trim();if(!line.startsWith('@CARD '))continue;const match=line.match(/^@CARD (\d+) (OK|ERR) (.*)$/);if(!match)continue;const waiter=pending.get(Number(match[1]));if(!waiter)continue;pending.delete(Number(match[1]));let body={message:match[3]};try{body=JSON.parse(match[3])}catch{};(match[2]==='OK'?waiter.resolve:waiter.reject)(body)}}}catch(error){if(port)message('串口读取失败：'+error.message,true)}finally{for(const waiter of pending.values())waiter.reject({message:'设备已断开'});pending.clear()}}
+    async function disconnect(){const oldPort=port;port=null;try{if(reader){await reader.cancel();reader.releaseLock()}}catch{}try{if(writer)writer.releaseLock()}catch{}reader=writer=null;try{if(oldPort)await oldPort.close()}catch{}setConnected(false)}
+    async function connect(){if(!('serial'in navigator))throw new Error('请使用最新版 Chrome 或 Edge，并通过 localhost 打开本页');port=await navigator.serial.requestPort();await port.open({baudRate:115200,bufferSize:262144});reader=port.readable.getReader();writer=port.writable.getWriter();setConnected(true);readLoop();await new Promise(r=>setTimeout(r,350));await refresh()}
+    async function command(name,payload=new Uint8Array()){if(!writer)throw new Error('请先连接 ESP32');const data=payload instanceof Uint8Array?payload:new Uint8Array(payload),id=nextId++,crc=crc32(data).toString(16).padStart(8,'0'),header=new TextEncoder().encode(`CARD/1 ${id} ${name} ${data.length} ${crc}\n`);const response=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject({message:'设备响应超时'})},30000);pending.set(id,{resolve:value=>{clearTimeout(timer);resolve(value)},reject:value=>{clearTimeout(timer);reject(value)}})});await writer.write(header);for(let offset=0;offset<data.length;offset+=1024){await writer.write(data.subarray(offset,offset+1024));await new Promise(resolve=>setTimeout(resolve,5))}return response}
+    function enqueue(action){const result=chain.then(action);chain=result.catch(()=>{});return result}
+    async function refresh(){if(!writer)return;const s=await command('STATUS');$('#imageState').textContent=s.image?'已保存':'尚未上传';$('#pluginState').textContent=(s.plugin?'已加载 · ':'未加载 · ')+s.pluginMessage;$('#internalFree').textContent=Math.round(s.internalFree/1024)+' KB 可用';$('#psramFree').textContent=Math.round(s.psramFree/1024)+' KB 可用'}
+    $('#connect').addEventListener('click',async()=>{try{if(port)await disconnect();else await connect();message(port?'USB 串口连接成功。':'设备已断开。')}catch(error){message(error.message,true);await disconnect()}});
+    $('#imageFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{source=await createImageBitmap(file);$('#uploadImage').disabled=false;redraw();message('图片已载入，调整后即可上传。')}catch(error){message('无法读取图片：'+error.message,true)}});
+    controls.forEach(id=>$(id).addEventListener('input',redraw));
+    $('#resetCrop').addEventListener('click',()=>{$('#zoom').value=1;$('#rotation').value=0;$('#offsetX').value=0;$('#offsetY').value=0;redraw()});
+    $('#uploadImage').addEventListener('click',()=>enqueue(async()=>{const b=$('#uploadImage');b.disabled=true;message('正在通过 USB 上传 134,400 字节…');try{const data=await command('PUT_IMAGE',rgb565());message(data.message);await refresh()}catch(error){message(error.message,true)}finally{b.disabled=false}}));
+    $('#pluginFile').addEventListener('change',e=>{$('#uploadPlugin').disabled=!e.target.files[0]});
+    $('#uploadPlugin').addEventListener('click',()=>enqueue(async()=>{const f=$('#pluginFile').files[0];if(!f)return;if(f.size<8||f.size>131072){message('插件大小必须在 8 字节到 128 KB 之间（当前 '+f.size+' 字节）',true);return}const b=$('#uploadPlugin');b.disabled=true;message('正在上传并验证 WASM 插件…');try{const data=await command('PUT_PLUGIN',new Uint8Array(await f.arrayBuffer()));message(data.message);await refresh()}catch(error){message(error.message,true)}finally{b.disabled=false}}));
+    $('#renderPlugin').addEventListener('click',()=>enqueue(async()=>{message('正在执行 plugin_render()…');try{const data=await command('RENDER');message(data.message);await refresh()}catch(error){message(error.message,true)}}));
+    $('#resetContent').addEventListener('click',()=>enqueue(async()=>{message('正在清除已保存的图片和插件…');try{const data=await command('RESET_CONTENT');message(data.message);setTimeout(()=>disconnect(),500)}catch(error){message(error.message,true)}}));
+    navigator.serial?.addEventListener('disconnect',()=>disconnect());
+    document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===tab));document.querySelectorAll('section[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab.dataset.target))}));
+    placeholder();setConnected(false);
+  </script>
+</body>
+</html>

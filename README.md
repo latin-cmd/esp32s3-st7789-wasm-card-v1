@@ -75,3 +75,5 @@ docker compose run --rm -T idf idf.py -B build-docker build
 
 `partitions.csv` 中的 `ota_0`、`ota_1` 预留给后续 OTA 升级；`coredump`
 分区用于保存崩溃现场。
+
+示例默认不包含个人姓名、公司、网址或联系方式。请勿提交真实名片素材。

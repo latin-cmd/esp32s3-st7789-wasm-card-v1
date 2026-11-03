@@ -37,6 +37,16 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 2.7.2
+  espressif/esp_websocket_client:
+    component_hash: f77326f0e1c38da4e9c97e17c5d649b0dd13027f2645e720e48db269638fd622
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.4.0
   espressif/wasm-micro-runtime:
     component_hash: 04f25aad2896b5e906397a061d35cce560609bebd3913a4be7e365ecbf2dd9d6
     dependencies:
@@ -78,10 +88,11 @@ dependencies:
 direct_dependencies:
 - espressif/esp_lcd_touch_cst816s
 - espressif/esp_lvgl_port
+- espressif/esp_websocket_client
 - espressif/wasm-micro-runtime
 - idf
 - joltwallet/littlefs
 - lvgl/lvgl
-manifest_hash: 3b9c89c863fed2f073fd2db7f391b6135f2afa36ca17564fbdd928fa64edb19e
+manifest_hash: 8b31f3faa51736c6318a047b0fa71a516ab27d8536b9b02e9e653e42750a8308
 target: esp32s3
 version: 2.0.0

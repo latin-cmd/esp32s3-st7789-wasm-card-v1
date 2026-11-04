@@ -18,4 +18,7 @@ bool card_storage_is_mounted(void);
 bool card_storage_file_exists(const char *path);
 size_t card_storage_file_size(const char *path);
 esp_err_t card_storage_replace(const char *temp_path, const char *final_path);
+/* Serialize USB/Wi-Fi content activation and plugin access. */
+bool card_storage_content_lock(uint32_t timeout_ms);
+void card_storage_content_unlock(void);
 

@@ -1,0 +1,10 @@
+.git
+build*
+managed_components
+wireless-data
+__pycache__
+*.pyc
+.env*
+assets
+main
+plugins

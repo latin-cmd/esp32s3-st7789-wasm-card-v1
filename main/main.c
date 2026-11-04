@@ -23,6 +23,7 @@
 #include "card_display.h"
 #include "card_storage.h"
 #include "card_serial.h"
+#include "card_network.h"
 #include "wasm_plugin.h"
 /* LVGL is configured through Kconfig (CONFIG_LV_CONF_SKIP=y), so main/lv_conf.h
  * is intentionally NOT included here: mixing it in would redefine LV_* macros
@@ -625,5 +626,9 @@ void app_main(void)
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Saved image could not be displayed: %s", esp_err_to_name(err));
         }
+    }
+    if (s_nvs_ok) {
+        err = card_network_start(safe_mode, card_build);
+        if (err != ESP_OK) ESP_LOGE(TAG, "Wireless startup failed: %s", esp_err_to_name(err));
     }
 }

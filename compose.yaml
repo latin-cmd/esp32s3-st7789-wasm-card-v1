@@ -1,0 +1,47 @@
+name: esp32-wasm-card
+
+services:
+  wireless:
+    build:
+      context: .
+      dockerfile: wireless/Dockerfile
+    environment:
+      CARD_PUBLIC_URL: ${CARD_PUBLIC_URL:-http://localhost:8787}
+      CARD_MQTT_URL: ${CARD_MQTT_URL:-mqtt://localhost:1883}
+      CARD_DATA_DIR: /data
+    ports:
+      - "8787:8787"
+      - "1883:1883"
+    volumes:
+      - wireless-data:/data
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  idf:
+    image: espressif/idf:v5.3.2
+    working_dir: /project
+    environment:
+      IDF_CCACHE_ENABLE: "1"
+      IDF_GIT_SAFE_DIR: /project
+      CCACHE_DIR: /root/.cache/ccache
+    volumes:
+      - type: bind
+        source: .
+        target: /project
+      - idf-components:/project/managed_components
+      - idf-ccache:/root/.cache/ccache
+    stdin_open: true
+    tty: true
+    init: true
+    command: ["sleep", "infinity"]
+
+volumes:
+  wireless-data:
+  idf-components:
+  idf-ccache:

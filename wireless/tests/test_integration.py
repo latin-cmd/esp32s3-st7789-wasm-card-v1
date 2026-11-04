@@ -144,6 +144,62 @@ class WirelessIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await browser.receive_json(timeout=3))["type"],"error")
             self.assertIsNone(self.app["store"].device(device_id)["image"])
 
+    async def test_offline_image_is_applied_after_device_reconnect(self):
+        a, _, device_http = self.clients
+        await self.post(a, "/api/auth/signup", {"email": "reconnect@example.test",
+            "password": "integration-reconnect", "tenant_name": "Reconnect"})
+        device_id, secret = "card-000000000003", secrets.token_hex(32)
+        enrollment = await self.post(device_http, "/api/device/register",
+                                     {"device_id": device_id, "secret": secret})
+        await self.post(a, "/api/devices/claim",
+                        {"device_id": device_id, "claim_code": enrollment["claim_code"]})
+        headers = {"X-Device-ID": device_id, "Authorization": "Bearer " + secret}
+        async with device_http.ws_connect(self.base + "/ws/device", headers=headers) as ws:
+            self.assertEqual((await ws.receive_json(timeout=3))["type"], "hello")
+        for _ in range(50):
+            if device_id not in self.app["device_sockets"]:
+                break
+            await asyncio.sleep(.02)
+        self.assertNotIn(device_id, self.app["device_sockets"])
+
+        payload = bytes(range(256)) * 525
+        crc = zlib.crc32(payload)
+        async with a.ws_connect(self.base + "/ws/browser", headers={"Origin": self.base}) as browser:
+            await browser.receive_json(timeout=3)
+            await browser.send_json({"type": "image_begin", "device_id": device_id,
+                                     "size": IMAGE_BYTES, "crc32": crc})
+            ready = await browser.receive_json(timeout=3)
+            self.assertEqual(ready["type"], "image_ready")
+            await browser.send_bytes(payload)
+            await browser.send_json({"type": "image_commit", "request_id": ready["request_id"]})
+            self.assertEqual((await browser.receive_json(timeout=3))["type"], "image_queued")
+        self.assertEqual(self.app["store"].device(device_id)["image_state"], "queued")
+
+        async with device_http.ws_connect(self.base + "/ws/device", headers=headers) as ws:
+            self.assertEqual((await ws.receive_json(timeout=3))["type"], "hello")
+            begin = await ws.receive_json(timeout=3)
+            self.assertEqual(begin["type"], "image_begin")
+            self.assertEqual(begin["request_id"], ready["request_id"])
+            received = bytearray()
+            while True:
+                message = await ws.receive(timeout=3)
+                if message.type == WSMsgType.BINARY:
+                    received.extend(message.data)
+                else:
+                    commit = json.loads(message.data)
+                    self.assertEqual(commit["type"], "image_commit")
+                    self.assertEqual(commit["request_id"], begin["request_id"])
+                    break
+            self.assertEqual(bytes(received), payload)
+            self.assertEqual(zlib.crc32(received), crc)
+            await ws.send_json({"type": "image_ack", "request_id": begin["request_id"],
+                                "ok": True, "crc32": crc})
+            for _ in range(50):
+                if self.app["store"].device(device_id)["image_state"] == "applied":
+                    break
+                await asyncio.sleep(.02)
+            self.assertEqual(self.app["store"].device(device_id)["image_state"], "applied")
+
     async def test_offline_queue_survives_server_restart(self):
         a, _, device_http = self.clients
         await self.post(a,"/api/auth/signup",{"email":"persist@example.test","password":"integration-password-p","tenant_name":"Persist"})

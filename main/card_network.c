@@ -618,6 +618,7 @@ static void network_task(void *arg)
     int64_t last_register = -15000000, last_status = 0, disconnected = esp_timer_get_time();
     int64_t button_since = 0;
     bool button_handled = false;
+    bool wifi_timeout_portal = false;
     while (true) {
         const int64_t now = esp_timer_get_time();
         EventBits_t bits = xEventGroupGetBits(s_events);
@@ -629,10 +630,18 @@ static void network_task(void *arg)
         if (!(bits & WIFI_READY)) {
             if (now - disconnected > 60000000) {
                 strlcpy(s_message, "Wi-Fi unavailable. Please configure.", sizeof(s_message));
-                start_portal();
+                /* Only a portal opened for this outage should close on Wi-Fi
+                   recovery. Keep existing claim/configuration portals open. */
+                if (!s_ap_active && start_portal() == ESP_OK) wifi_timeout_portal = true;
             }
         } else {
             disconnected = now;
+            /* A retained WebSocket client reconnects itself. Portal recovery
+               must not wait for a new client or a server assignment. */
+            if (wifi_timeout_portal) {
+                if (!s_manual_setup) stop_portal();
+                wifi_timeout_portal = false;
+            }
             if (s_server[0] && (!s_registered || !s_claimed) && now - last_register > 15000000) {
                 last_register = now;
                 if (register_device() != ESP_OK) {
@@ -648,10 +657,8 @@ static void network_task(void *arg)
                 s_claimed = true;
                 s_claim_code[0] = '\0';
                 /* Restore the card before allowing the server to send a new image. */
-                if (!s_ws) {
-                    if (s_ap_active && !s_manual_setup) stop_portal();
-                    start_websocket(&assignment);
-                }
+                if (s_ap_active && !s_manual_setup) stop_portal();
+                if (!s_ws) start_websocket(&assignment);
             }
         }
         if (xSemaphoreTake(s_image_lock, 0) == pdTRUE) {
